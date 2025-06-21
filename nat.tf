@@ -34,12 +34,12 @@ resource "aws_eip" "nat_instance" {
 }
 
 resource "aws_instance" "nat_instance" {
-  ami                     = data.aws_ami.amazon_linux_x86_nat.id
-  instance_type           = var.nat_instance_type
-  subnet_id               = aws_subnet.public[0].id
-  vpc_security_group_ids  = [aws_security_group.nat_instance.id]
-  source_dest_check       = false
-  key_name                = var.key_pair_name
+  ami                    = data.aws_ami.amazon_linux_x86_nat.id
+  instance_type          = var.nat_instance_type
+  subnet_id              = aws_subnet.public[0].id
+  vpc_security_group_ids = [aws_security_group.nat_instance.id]
+  source_dest_check      = false
+  key_name               = var.key_pair_name
 
   user_data = base64encode(templatefile("${path.module}/user_data/nat_instance.sh", {}))
 

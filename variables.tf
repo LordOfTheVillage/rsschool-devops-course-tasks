@@ -29,39 +29,39 @@ variable "project_name" {
 }
 
 variable "vpc_cidr" {
-  type        = string
-  default     = "10.0.0.0/16"
+  type    = string
+  default = "10.0.0.0/16"
 }
 
 variable "availability_zones" {
-  type        = list(string)
-  default     = ["eu-west-2a", "eu-west-2b"]
+  type    = list(string)
+  default = ["eu-west-2a", "eu-west-2b"]
 }
 
 variable "public_subnet_cidrs" {
-  type        = list(string)
-  default     = ["10.0.1.0/24", "10.0.2.0/24"]
+  type    = list(string)
+  default = ["10.0.1.0/24", "10.0.2.0/24"]
 }
 
 variable "private_subnet_cidrs" {
-  type        = list(string)
-  default     = ["10.0.10.0/24", "10.0.20.0/24"]
+  type    = list(string)
+  default = ["10.0.10.0/24", "10.0.20.0/24"]
 }
 
 variable "nat_instance_type" {
-  type        = string
-  default     = "t2.micro"
+  type    = string
+  default = "t2.micro"
   validation {
-    condition = contains(["t2.micro", "t4g.nano", "t4g.micro"], var.nat_instance_type)
+    condition     = contains(["t2.micro", "t4g.nano", "t4g.micro"], var.nat_instance_type)
     error_message = "Use Free Tier or cost-effective instance types."
   }
 }
 
 variable "bastion_instance_type" {
-  type        = string
-  default     = "t2.micro"
+  type    = string
+  default = "t2.micro"
   validation {
-    condition = contains(["t2.micro", "t3.micro", "t3.small"], var.bastion_instance_type)
+    condition     = contains(["t2.micro", "t3.micro", "t3.small"], var.bastion_instance_type)
     error_message = "Use Free Tier or cost-effective instance types."
   }
 }
@@ -73,7 +73,7 @@ variable "key_pair_name" {
 }
 
 variable "common_tags" {
-  type        = map(string)
+  type = map(string)
   default = {
     Project     = "rsschool-devops"
     Environment = "dev"
