@@ -72,12 +72,34 @@ variable "key_pair_name" {
   default     = "rsschool-devops-key"
 }
 
+variable "k3s_master_instance_type" {
+  type    = string
+  default = "t2.micro"
+  validation {
+    condition     = contains(["t2.micro", "t3.micro", "t3.small"], var.k3s_master_instance_type)
+    error_message = "Use Free Tier or cost-effective instance types."
+  }
+}
+
+variable "k3s_worker_instance_type" {
+  type    = string
+  default = "t2.micro"
+  validation {
+    condition     = contains(["t2.micro", "t3.micro", "t3.small"], var.k3s_worker_instance_type)
+    error_message = "Use Free Tier or cost-effective instance types."
+  }
+}
+
+variable "k3s_cluster_name" {
+  type    = string
+  default = "rsschool-k3s"
+}
+
 variable "common_tags" {
   type = map(string)
   default = {
     Project     = "rsschool-devops"
     Environment = "dev"
     ManagedBy   = "terraform"
-    Task        = "task_2"
   }
 }
