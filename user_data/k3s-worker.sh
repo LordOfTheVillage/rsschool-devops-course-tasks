@@ -5,41 +5,29 @@ exec 2>&1
 
 echo "Starting K3s Worker node configuration..."
 
-yum update -y
+dnf update -y
 
-yum install -y \
-    curl \
+echo "Installing dependencies..."
+dnf install -y curl --allowerasing
+dnf install -y \
     wget \
     htop \
     vim \
-    awscli
-
-aws configure set region eu-west-2
+    nmap-ncat
 
 echo "Waiting for master node to be ready..."
-sleep 120
+sleep 180
 
-echo "Retrieving node token from SSM..."
-max_attempts=10
-attempt=1
+echo "Cleaning any existing K3s configuration..."
+systemctl stop k3s-agent 2>/dev/null || true
+rm -rf /var/lib/rancher/k3s/agent
+rm -rf /etc/rancher/k3s/k3s.yaml
+rm -f /usr/local/bin/k3s
+killall k3s 2>/dev/null || true
 
-while [ $attempt -le $max_attempts ]; do
-    NODE_TOKEN=$(aws ssm get-parameter --name "${ssm_token_param}" --with-decryption --query 'Parameter.Value' --output text 2>/dev/null)
-    
-    if [ ! -z "$NODE_TOKEN" ] && [ "$NODE_TOKEN" != "None" ] && [ "$NODE_TOKEN" != "placeholder" ]; then
-        echo "Successfully retrieved node token (attempt $attempt)"
-        break
-    else
-        echo "Waiting for node token... (attempt $attempt/$max_attempts)"
-        sleep 30
-        ((attempt++))
-    fi
-done
-
-if [ -z "$NODE_TOKEN" ] || [ "$NODE_TOKEN" == "None" ] || [ "$NODE_TOKEN" == "placeholder" ]; then
-    echo "ERROR: Could not retrieve node token from SSM"
-    exit 1
-fi
+echo "Using pre-generated cluster token..."
+NODE_TOKEN="${k3s_token}"
+echo "Token configured successfully"
 
 K3S_URL="https://${master_ip}:6443"
 
@@ -47,8 +35,19 @@ echo "Installing K3s agent..."
 echo "Master IP: ${master_ip}"
 echo "K3s URL: $K3S_URL"
 
+echo "Testing connectivity to master..."
+timeout 30 bash -c "until ncat -z ${master_ip} 6443; do sleep 2; done"
+if [ $? -ne 0 ]; then
+    echo "ERROR: Cannot connect to master at ${master_ip}:6443"
+    exit 1
+fi
+
 curl -sfL https://get.k3s.io | K3S_URL=$K3S_URL K3S_TOKEN=$NODE_TOKEN sh -s - agent \
-  --node-label="node-role=worker"
+  --node-label="node-role=worker" \
+  --kubelet-arg="--max-pods=110" \
+  --kubelet-arg="--node-status-update-frequency=10s" \
+  --kubelet-arg="--image-gc-high-threshold=70" \
+  --kubelet-arg="--image-gc-low-threshold=50"
 
 echo "Waiting for K3s agent to be ready..."
 sleep 30
@@ -63,6 +62,9 @@ systemctl status k3s-agent --no-pager
 echo ""
 echo "Node processes:"
 ps aux | grep k3s
+echo ""
+echo "Agent logs (last 20 lines):"
+journalctl -u k3s-agent -n 20 --no-pager
 EOF
 
 chmod +x /home/ec2-user/check-node.sh

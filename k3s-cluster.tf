@@ -1,54 +1,4 @@
-resource "aws_iam_role" "k3s_node_role" {
-  name = "${var.project_name}-k3s-node-role"
 
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        }
-      }
-    ]
-  })
-
-  tags = merge(var.common_tags, {
-    Name = "${var.project_name}-k3s-node-role"
-  })
-}
-
-resource "aws_iam_role_policy" "k3s_node_ssm_policy" {
-  name = "${var.project_name}-k3s-node-ssm-policy"
-  role = aws_iam_role.k3s_node_role.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "ssm:GetParameter",
-          "ssm:PutParameter",
-          "ssm:GetParameters"
-        ]
-        Resource = [
-          "arn:aws:ssm:${var.aws_region}:*:parameter/k3s/*"
-        ]
-      }
-    ]
-  })
-}
-
-resource "aws_iam_instance_profile" "k3s_node_profile" {
-  name = "${var.project_name}-k3s-node-profile"
-  role = aws_iam_role.k3s_node_role.name
-
-  tags = merge(var.common_tags, {
-    Name = "${var.project_name}-k3s-node-profile"
-  })
-}
 
 data "aws_ami" "k3s_nodes" {
   most_recent = true
@@ -75,18 +25,9 @@ data "aws_ami" "k3s_nodes" {
   }
 }
 
-resource "aws_ssm_parameter" "k3s_token" {
-  name  = "/k3s/node-token"
-  type  = "SecureString"
-  value = "placeholder"
-
-  tags = merge(var.common_tags, {
-    Name = "${var.project_name}-k3s-token"
-  })
-
-  lifecycle {
-    ignore_changes = [value]
-  }
+resource "random_password" "k3s_token" {
+  length  = 64
+  special = true
 }
 
 resource "aws_instance" "k3s_master" {
@@ -95,11 +36,10 @@ resource "aws_instance" "k3s_master" {
   subnet_id              = aws_subnet.private[0].id
   vpc_security_group_ids = [aws_security_group.k3s_cluster.id]
   key_name               = var.key_pair_name
-  iam_instance_profile   = aws_iam_instance_profile.k3s_node_profile.name
 
   user_data = base64encode(templatefile("${path.module}/user_data/k3s-master.sh", {
-    cluster_name    = var.k3s_cluster_name
-    ssm_token_param = aws_ssm_parameter.k3s_token.name
+    cluster_name = var.k3s_cluster_name
+    k3s_token    = random_password.k3s_token.result
   }))
 
   tags = merge(var.common_tags, {
@@ -119,11 +59,10 @@ resource "aws_instance" "k3s_worker" {
   subnet_id              = aws_subnet.private[1].id
   vpc_security_group_ids = [aws_security_group.k3s_cluster.id]
   key_name               = var.key_pair_name
-  iam_instance_profile   = aws_iam_instance_profile.k3s_node_profile.name
 
   user_data = base64encode(templatefile("${path.module}/user_data/k3s-worker.sh", {
-    master_ip       = aws_instance.k3s_master.private_ip
-    ssm_token_param = aws_ssm_parameter.k3s_token.name
+    master_ip = aws_instance.k3s_master.private_ip
+    k3s_token = random_password.k3s_token.result
   }))
 
   tags = merge(var.common_tags, {

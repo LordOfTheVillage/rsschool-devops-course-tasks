@@ -40,12 +40,16 @@ resource "aws_instance" "bastion" {
   vpc_security_group_ids = [aws_security_group.bastion.id]
   key_name               = var.key_pair_name
 
-  user_data = base64encode(templatefile("${path.module}/user_data/bastion.sh", {}))
+  user_data = base64encode(templatefile("${path.module}/user_data/bastion.sh", {
+    k3s_master_ip = aws_instance.k3s_master.private_ip
+  }))
 
   tags = merge(var.common_tags, {
     Name = "${var.project_name}-bastion-host"
     Type = "bastion"
   })
+
+  depends_on = [aws_instance.k3s_master]
 
   lifecycle {
     create_before_destroy = true

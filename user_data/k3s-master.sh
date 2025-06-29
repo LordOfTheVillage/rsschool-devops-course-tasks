@@ -11,33 +11,33 @@ yum install -y \
     curl \
     wget \
     htop \
-    vim \
-    awscli
-
-aws configure set region eu-west-2
+    vim
 
 echo "Installing K3s server..."
 
-curl -sfL https://get.k3s.io | sh -s - server \
-  --cluster-init \
-  --node-external-ip=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4) \
-  --flannel-iface=eth0 \
+LOCAL_IP=$(hostname -I | awk '{print $1}')
+echo "Local IP detected: $LOCAL_IP"
+
+curl -sfL https://get.k3s.io | K3S_TOKEN="${k3s_token}" sh -s - server \
   --write-kubeconfig-mode=644 \
   --cluster-domain="${cluster_name}.local" \
-  --node-label="node-role=master"
+  --node-label="node-role=master" \
+  --bind-address=0.0.0.0 \
+  --advertise-address=$LOCAL_IP \
+  --disable=traefik \
+  --disable=servicelb \
+  --disable=metrics-server \
+  --kube-controller-manager-arg="--node-monitor-period=40s" \
+  --kube-controller-manager-arg="--node-monitor-grace-period=40s" \
+  --kubelet-arg="--max-pods=110"
 
 echo "Waiting for K3s to be ready..."
 sleep 30
 
 systemctl status k3s
 
-echo "Storing node token in SSM..."
-NODE_TOKEN=$(sudo cat /var/lib/rancher/k3s/server/node-token)
-aws ssm put-parameter \
-  --name "${ssm_token_param}" \
-  --value "$NODE_TOKEN" \
-  --type "SecureString" \
-  --overwrite
+echo "Using pre-generated cluster token..."
+echo "Token configured successfully"
 
 mkdir -p /home/ec2-user/.kube
 cp /etc/rancher/k3s/k3s.yaml /home/ec2-user/.kube/config
@@ -77,5 +77,5 @@ echo "K3s master node configured on $(date)" > /var/log/k3s-master-status.txt
 echo "K3s Master node configuration completed successfully!"
 
 echo "Master node ready!"
-echo "Node token stored in SSM Parameter: ${ssm_token_param}"
+echo "Cluster token configured successfully"
 echo "Kubeconfig available at: /home/ec2-user/.kube/config" 

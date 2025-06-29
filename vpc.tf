@@ -120,6 +120,15 @@ resource "aws_network_acl" "public" {
     to_port    = 65535
   }
 
+  ingress {
+    rule_no    = 150
+    protocol   = "icmp"
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 0
+    to_port    = 0
+  }
+
   egress {
     rule_no    = 100
     protocol   = "-1"
@@ -155,6 +164,16 @@ resource "aws_network_acl" "private" {
     cidr_block = "0.0.0.0/0"
     from_port  = 1024
     to_port    = 65535
+  }
+
+  # Add ICMP rule for ping and connectivity testing
+  ingress {
+    rule_no    = 120
+    protocol   = "icmp"
+    action     = "allow"
+    cidr_block = var.vpc_cidr
+    from_port  = 0
+    to_port    = 0
   }
 
   # Outbound rules

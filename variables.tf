@@ -74,7 +74,7 @@ variable "key_pair_name" {
 
 variable "k3s_master_instance_type" {
   type    = string
-  default = "t2.micro"
+  default = "t3.small"
   validation {
     condition     = contains(["t2.micro", "t3.micro", "t3.small"], var.k3s_master_instance_type)
     error_message = "Use Free Tier or cost-effective instance types."

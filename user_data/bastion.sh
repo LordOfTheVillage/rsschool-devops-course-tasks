@@ -96,12 +96,9 @@ echo "Setting up kubectl access to K3s cluster..."
 echo "Waiting for K3s master node to initialize..."
 sleep 180
 
-# Try to get kubeconfig from master node
-MASTER_IP=$(aws ec2 describe-instances \
-  --region eu-west-2 \
-  --filters "Name=tag:Type,Values=k3s-master" "Name=instance-state-name,Values=running" \
-  --query 'Reservations[0].Instances[0].PrivateIpAddress' \
-  --output text)
+# Get master IP from terraform template
+MASTER_IP="${k3s_master_ip}"
+echo "K3s master IP: $MASTER_IP"
 
 if [ "$MASTER_IP" != "None" ]; then
     echo "Found K3s master at: $MASTER_IP"
