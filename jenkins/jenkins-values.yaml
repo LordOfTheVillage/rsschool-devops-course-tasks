@@ -1,0 +1,36 @@
+controller:
+  persistence:
+    enabled: true
+    existingClaim: ""
+    storageClass: "standard"
+    accessMode: "ReadWriteOnce"
+    size: "8Gi"
+
+  serviceType: NodePort
+  nodePort: 32000
+
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "1000m"
+      memory: "2Gi"
+
+  javaOpts: "-Xms512m -Xmx1024m"
+
+  installPlugins:
+    - kubernetes
+    - workflow-aggregator
+    - git
+    - configuration-as-code
+
+agent:
+  enabled: true
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
