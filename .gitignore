@@ -43,3 +43,5 @@ rsschool-devops-key.pem
 # Cleanup scripts
 selective-cleanup.sh
 quick-cleanup.sh
+
+/setup
