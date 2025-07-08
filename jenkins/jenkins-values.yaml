@@ -24,6 +24,62 @@ controller:
     - workflow-aggregator
     - git
     - configuration-as-code
+    - matrix-auth
+    - job-dsl:1.87
+
+  JCasC:
+    configScripts:
+      basic: |
+        jenkins:
+          systemMessage: "Jenkins configured automatically by JCasC plugin"
+          securityRealm:
+            local:
+              allowsSignup: false
+              users:
+                - id: "admin"
+                  password: "admin"
+                - id: "developer"
+                  password: "developer"
+                - id: "viewer"
+                  password: "viewer"
+          authorizationStrategy:
+            projectMatrix:
+              entries:
+                - user:
+                    name: admin
+                    permissions:
+                      - Overall/Administer
+                - user:
+                    name: developer
+                    permissions:
+                      - Overall/Read
+                      - Job/Build
+                - user:
+                    name: viewer
+                    permissions:
+                      - Overall/Read
+      jobs: |
+        ---
+        jobs:
+          - script: >
+              pipelineJob('hello-world') {
+                definition {
+                  cps {
+                    script('''
+                      pipeline {
+                        agent any
+                        stages {
+                          stage('Hello') {
+                            steps {
+                              echo 'Hello World'
+                            }
+                          }
+                        }
+                      }
+                    ''')
+                  }
+                }
+              }
 
 agent:
   enabled: true
