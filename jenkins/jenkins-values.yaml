@@ -1,0 +1,92 @@
+controller:
+  persistence:
+    enabled: true
+    existingClaim: ""
+    storageClass: "standard"
+    accessMode: "ReadWriteOnce"
+    size: "8Gi"
+
+  serviceType: NodePort
+  nodePort: 32000
+
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "1000m"
+      memory: "2Gi"
+
+  javaOpts: "-Xms512m -Xmx1024m"
+
+  installPlugins:
+    - kubernetes
+    - workflow-aggregator
+    - git
+    - configuration-as-code
+    - matrix-auth
+    - job-dsl:1.87
+
+  JCasC:
+    configScripts:
+      basic: |
+        jenkins:
+          systemMessage: "Jenkins configured automatically by JCasC plugin"
+          securityRealm:
+            local:
+              allowsSignup: false
+              users:
+                - id: "admin"
+                  password: "admin"
+                - id: "developer"
+                  password: "developer"
+                - id: "viewer"
+                  password: "viewer"
+          authorizationStrategy:
+            projectMatrix:
+              entries:
+                - user:
+                    name: admin
+                    permissions:
+                      - Overall/Administer
+                - user:
+                    name: developer
+                    permissions:
+                      - Overall/Read
+                      - Job/Build
+                - user:
+                    name: viewer
+                    permissions:
+                      - Overall/Read
+      jobs: |
+        ---
+        jobs:
+          - script: >
+              pipelineJob('hello-world') {
+                definition {
+                  cps {
+                    script('''
+                      pipeline {
+                        agent any
+                        stages {
+                          stage('Hello') {
+                            steps {
+                              echo 'Hello World'
+                            }
+                          }
+                        }
+                      }
+                    ''')
+                  }
+                }
+              }
+
+agent:
+  enabled: true
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
