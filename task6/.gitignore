@@ -48,4 +48,13 @@ nohup.out
 # Security
 *.key
 *.pem
-secrets.yaml 
+secrets.yaml
+.env
+.env.local
+webhook_url.txt
+slack_config.json
+
+# Credentials and secrets
+**/credentials.json
+**/secrets/
+webhook*.txt 
