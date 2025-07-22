@@ -1,0 +1,406 @@
+pipeline {
+    agent any
+    
+    environment {
+        APP_NAME = 'flask-app'
+        APP_VERSION = "1.0.${BUILD_NUMBER}"
+        DOCKER_IMAGE = "${APP_NAME}:${APP_VERSION}"
+        HELM_CHART_PATH = './task6/flask-app-chart'
+        APP_PATH = './task6/flask_app'
+        
+        DOCKER_REGISTRY = 'localhost:5000'
+        KUBECONFIG = "${env.HOME}/.kube/config"
+        
+        SONAR_PROJECT_KEY = 'flask-app-devops'
+        SONAR_PROJECT_NAME = 'Flask App DevOps'
+        
+        SLACK_CHANNEL = '#devops-alerts'
+        EMAIL_RECIPIENTS = 'dev-team@company.com'
+    }
+    
+    options {
+        buildDiscarder(logRotator(daysToKeepStr: '30', numToKeepStr: '10'))
+        timestamps()
+        timeout(time: 30, unit: 'MINUTES')
+    }
+    
+    stages {
+        stage('🚀 Checkout & Setup') {
+            steps {
+                script {
+                    echo "🔍 Starting CI/CD Pipeline for ${APP_NAME} v${APP_VERSION}"
+                    echo "🏠 Workspace: ${WORKSPACE}"
+                    echo "🔧 Node: ${NODE_NAME}"
+                    
+                    sh '''
+                        echo "📋 Git Information:"
+                        echo "Branch: $(git rev-parse --abbrev-ref HEAD)"
+                        echo "Commit: $(git rev-parse --short HEAD)"
+                        echo "Author: $(git log -1 --pretty=format:'%an <%ae>')"
+                        echo "Message: $(git log -1 --pretty=format:'%s')"
+                    '''
+                }
+            }
+        }
+        
+        stage('🏗️ Application Build') {
+            steps {
+                script {
+                    echo "🏗️ Building Flask application..."
+                    dir(APP_PATH) {
+                        sh '''
+                            echo "🐍 Setting up Python environment..."
+                            python -m venv venv
+                            
+                            # Activate virtual environment (Windows)
+                            if [ -f "venv/Scripts/activate" ]; then
+                                source venv/Scripts/activate
+                            else
+                                source venv/bin/activate
+                            fi
+                            
+                            echo "📦 Installing dependencies..."
+                            pip install --upgrade pip
+                            pip install -r requirements.txt
+                            
+                            echo "✅ Application build completed!"
+                        '''
+                    }
+                }
+            }
+        }
+        
+        stage('🧪 Unit Tests') {
+            steps {
+                script {
+                    echo "🧪 Running unit tests..."
+                    dir(APP_PATH) {
+                        sh '''
+                            # Activate virtual environment
+                            if [ -f "venv/Scripts/activate" ]; then
+                                source venv/Scripts/activate
+                            else
+                                source venv/bin/activate
+                            fi
+                            
+                            echo "🔍 Running pytest with coverage..."
+                            pytest --verbose --tb=short --cov=main --cov-report=xml --cov-report=html --cov-report=term-missing
+                            
+                            echo "✅ Unit tests completed!"
+                        '''
+                        
+                        publishHTML([
+                            allowMissing: false,
+                            alwaysLinkToLastBuild: true,
+                            keepAll: true,
+                            reportDir: 'htmlcov',
+                            reportFiles: 'index.html',
+                            reportName: 'Coverage Report'
+                        ])
+                    }
+                }
+            }
+            post {
+                always {
+                    dir(APP_PATH) {
+                        publishTestResults testResultsPattern: 'coverage.xml'
+                        publishCoverage adapters: [
+                            coberturaAdapter('coverage.xml')
+                        ], sourceFileResolver: sourceFiles('STORE_LAST_BUILD')
+                    }
+                }
+            }
+        }
+        
+        stage('🔐 Security Check - SonarQube') {
+            when {
+                expression { return env.SONAR_HOST_URL != null }
+            }
+            steps {
+                script {
+                    echo "🔐 Running SonarQube security analysis..."
+                    dir(APP_PATH) {
+                        withSonarQubeEnv('SonarQube') {
+                            sh '''
+                                sonar-scanner \\
+                                    -Dsonar.projectKey=${SONAR_PROJECT_KEY} \\
+                                    -Dsonar.projectName="${SONAR_PROJECT_NAME}" \\
+                                    -Dsonar.projectVersion=${APP_VERSION} \\
+                                    -Dsonar.sources=. \\
+                                    -Dsonar.python.coverage.reportPaths=coverage.xml \\
+                                    -Dsonar.python.xunit.reportPath=coverage.xml \\
+                                    -Dsonar.exclusions=venv/**,__pycache__/**,*.pyc,htmlcov/**
+                            '''
+                        }
+                        
+                        timeout(time: 5, unit: 'MINUTES') {
+                            def qg = waitForQualityGate()
+                            if (qg.status != 'OK') {
+                                error "🚨 Pipeline aborted due to quality gate failure: ${qg.status}"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('🐳 Docker Build & Push') {
+            steps {
+                script {
+                    echo "🐳 Building and pushing Docker image..."
+                    dir(APP_PATH) {
+                        sh """
+                            echo "🔨 Building Docker image: ${DOCKER_IMAGE}"
+                            docker build -t ${DOCKER_IMAGE} .
+                            
+                            # Tag for local registry (minikube)
+                            docker tag ${DOCKER_IMAGE} ${DOCKER_REGISTRY}/${DOCKER_IMAGE}
+                            
+                            echo "📤 Pushing to local registry..."
+                            docker push ${DOCKER_REGISTRY}/${DOCKER_IMAGE}
+                            
+                            echo "✅ Docker build and push completed!"
+                        """
+                    }
+                }
+            }
+            post {
+                always {
+                    sh """
+                        docker rmi ${DOCKER_IMAGE} || true
+                        docker rmi ${DOCKER_REGISTRY}/${DOCKER_IMAGE} || true
+                    """
+                }
+            }
+        }
+        
+        stage('🚀 Deploy to Kubernetes') {
+            when {
+                anyOf {
+                    branch 'main'
+                    branch 'task_6'
+                    expression { params.FORCE_DEPLOY == true }
+                }
+            }
+            steps {
+                script {
+                    echo "🚀 Deploying to Kubernetes with Helm..."
+                    
+                    sh """
+                        echo "📝 Updating Helm values..."
+                        cd ${HELM_CHART_PATH}
+                        
+                        # Update image tag in values.yaml
+                        sed -i 's/tag: "latest"/tag: "${APP_VERSION}"/' values.yaml
+                        sed -i 's|repository: flask-app|repository: ${DOCKER_REGISTRY}/flask-app|' values.yaml
+                        
+                        echo "🎯 Deploying with Helm..."
+                        helm upgrade --install ${APP_NAME} . \\
+                            --namespace default \\
+                            --set image.tag=${APP_VERSION} \\
+                            --set image.repository=${DOCKER_REGISTRY}/flask-app \\
+                            --wait --timeout=300s
+                        
+                        echo "📋 Checking deployment status..."
+                        kubectl get pods -l app.kubernetes.io/name=flask-app-chart
+                        kubectl get services -l app.kubernetes.io/name=flask-app-chart
+                        kubectl get ingress -l app.kubernetes.io/name=flask-app-chart
+                        
+                        echo "✅ Deployment completed successfully!"
+                    """
+                }
+            }
+        }
+        
+        stage('✅ Application Verification') {
+            when {
+                anyOf {
+                    branch 'main'
+                    branch 'task_6'
+                    expression { params.FORCE_DEPLOY == true }
+                }
+            }
+            steps {
+                script {
+                    echo "✅ Verifying application deployment..."
+                    
+                    sh '''
+                        echo "⏳ Waiting for application to be ready..."
+                        sleep 30
+                        
+                        # Get service URL
+                        SERVICE_NAME=$(kubectl get svc -l app.kubernetes.io/name=flask-app-chart -o jsonpath='{.items[0].metadata.name}')
+                        SERVICE_PORT=$(kubectl get svc -l app.kubernetes.io/name=flask-app-chart -o jsonpath='{.items[0].spec.ports[0].port}')
+                        
+                        echo "🔍 Testing service: $SERVICE_NAME:$SERVICE_PORT"
+                        
+                        # Test health endpoints using kubectl port-forward in background
+                        kubectl port-forward svc/$SERVICE_NAME 8080:$SERVICE_PORT &
+                        PORT_FORWARD_PID=$!
+                        
+                        sleep 10
+                        
+                        echo "🏥 Testing health endpoints..."
+                        
+                        # Test health endpoint
+                        if curl -f http://localhost:8080/health; then
+                            echo "✅ Health check passed"
+                        else
+                            echo "❌ Health check failed"
+                            kill $PORT_FORWARD_PID || true
+                            exit 1
+                        fi
+                        
+                        # Test readiness endpoint
+                        if curl -f http://localhost:8080/ready; then
+                            echo "✅ Readiness check passed"
+                        else
+                            echo "❌ Readiness check failed"
+                            kill $PORT_FORWARD_PID || true
+                            exit 1
+                        fi
+                        
+                        # Test main application
+                        if curl -f http://localhost:8080/ | grep -q "Hello, World!"; then
+                            echo "✅ Main application test passed"
+                        else
+                            echo "❌ Main application test failed"
+                            kill $PORT_FORWARD_PID || true
+                            exit 1
+                        fi
+                        
+                        # Test API endpoint
+                        if curl -f http://localhost:8080/api/test | grep -q "API is working"; then
+                            echo "✅ API test passed"
+                        else
+                            echo "❌ API test failed"
+                            kill $PORT_FORWARD_PID || true
+                            exit 1
+                        fi
+                        
+                        # Clean up port-forward
+                        kill $PORT_FORWARD_PID || true
+                        
+                        echo "🎉 All verification tests passed!"
+                    '''
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            script {
+                echo "🧹 Cleaning up workspace..."
+                dir(APP_PATH) {
+                    sh 'rm -rf venv || true'
+                    sh 'rm -rf __pycache__ .pytest_cache htmlcov .coverage || true'
+                }
+            }
+        }
+        
+        success {
+            script {
+                echo "🎉 Pipeline completed successfully!"
+                
+                if (env.SLACK_WEBHOOK_URL) {
+                    slackSend(
+                        channel: SLACK_CHANNEL,
+                        color: 'good',
+                        message: """
+✅ *Deployment Successful!*
+📦 *Application:* ${APP_NAME} v${APP_VERSION}
+🌿 *Branch:* ${env.BRANCH_NAME}
+🔗 *Build:* ${env.BUILD_URL}
+👤 *Triggered by:* ${env.BUILD_USER ?: 'Jenkins'}
+                        """.trim()
+                    )
+                }
+                
+                emailext(
+                    subject: "✅ Deployment Success - ${APP_NAME} v${APP_VERSION}",
+                    body: """
+Pipeline completed successfully!
+
+Application: ${APP_NAME} v${APP_VERSION}
+Branch: ${env.BRANCH_NAME}
+Build: ${env.BUILD_URL}
+Duration: ${currentBuild.durationString}
+
+The application has been deployed and verified successfully.
+                    """,
+                    to: EMAIL_RECIPIENTS
+                )
+            }
+        }
+        
+        failure {
+            script {
+                echo "❌ Pipeline failed!"
+                
+                if (env.SLACK_WEBHOOK_URL) {
+                    slackSend(
+                        channel: SLACK_CHANNEL,
+                        color: 'danger',
+                        message: """
+❌ *Deployment Failed!*
+📦 *Application:* ${APP_NAME} v${APP_VERSION}
+🌿 *Branch:* ${env.BRANCH_NAME}
+🔗 *Build:* ${env.BUILD_URL}
+👤 *Triggered by:* ${env.BUILD_USER ?: 'Jenkins'}
+🔍 *Check logs for details*
+                        """.trim()
+                    )
+                }
+                
+                emailext(
+                    subject: "❌ Deployment Failed - ${APP_NAME} v${APP_VERSION}",
+                    body: """
+Pipeline failed!
+
+Application: ${APP_NAME} v${APP_VERSION}
+Branch: ${env.BRANCH_NAME}
+Build: ${env.BUILD_URL}
+Duration: ${currentBuild.durationString}
+
+Please check the build logs for more details: ${env.BUILD_URL}console
+                    """,
+                    to: EMAIL_RECIPIENTS
+                )
+            }
+        }
+        
+        unstable {
+            script {
+                echo "⚠️ Pipeline unstable!"
+                
+                if (env.SLACK_WEBHOOK_URL) {
+                    slackSend(
+                        channel: SLACK_CHANNEL,
+                        color: 'warning',
+                        message: """
+⚠️ *Deployment Unstable!*
+📦 *Application:* ${APP_NAME} v${APP_VERSION}
+🌿 *Branch:* ${env.BRANCH_NAME}
+🔗 *Build:* ${env.BUILD_URL}
+🔍 *Some tests may have failed*
+                        """.trim()
+                    )
+                }
+            }
+        }
+    }
+}
+
+parameters {
+    booleanParam(
+        name: 'FORCE_DEPLOY',
+        defaultValue: false,
+        description: 'Force deployment regardless of branch'
+    )
+    choice(
+        name: 'LOG_LEVEL',
+        choices: ['INFO', 'DEBUG', 'WARNING', 'ERROR'],
+        description: 'Logging level for the pipeline'
+    )
+} 
