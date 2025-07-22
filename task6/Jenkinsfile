@@ -11,11 +11,12 @@ pipeline {
         DOCKER_REGISTRY = 'localhost:5000'
         KUBECONFIG = "${env.HOME}/.kube/config"
         
-        SONAR_PROJECT_KEY = 'flask-app-devops'
-        SONAR_PROJECT_NAME = 'Flask App DevOps'
+        SONAR_PROJECT_KEY = 'LordOfTheVillage_rsschool-devops-course-tasks'
+        SONAR_PROJECT_NAME = 'rsschool-devops-course-tasks'
+        SONAR_ORGANIZATION = 'LordOfTheVillage'
         
         SLACK_CHANNEL = '#devops-alerts'
-        EMAIL_RECIPIENTS = 'dev-team@company.com'
+        EMAIL_RECIPIENTS = 'maksim.kyl285@gmail.com'
     }
     
     options {
@@ -112,18 +113,19 @@ pipeline {
             }
         }
         
-        stage('🔐 Security Check - SonarQube') {
+        stage('🔐 Security Check - SonarQube Cloud') {
             when {
                 expression { return env.SONAR_HOST_URL != null }
             }
             steps {
                 script {
-                    echo "🔐 Running SonarQube security analysis..."
+                    echo "🔐 Running SonarQube Cloud security analysis..."
                     dir(APP_PATH) {
-                        withSonarQubeEnv('SonarQube') {
+                        withSonarQubeEnv('SonarQube') { 
                             sh '''
                                 sonar-scanner \\
                                     -Dsonar.projectKey=${SONAR_PROJECT_KEY} \\
+                                    -Dsonar.organization=${SONAR_ORGANIZATION} \\
                                     -Dsonar.projectName="${SONAR_PROJECT_NAME}" \\
                                     -Dsonar.projectVersion=${APP_VERSION} \\
                                     -Dsonar.sources=. \\
