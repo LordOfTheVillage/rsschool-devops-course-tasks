@@ -21,6 +21,7 @@ rules:
         "events",
         "configmaps",
         "secrets",
+        "serviceaccounts",
       ]
     verbs: ["*"]
   - apiGroups: [""]
@@ -31,6 +32,12 @@ rules:
     verbs: ["*"]
   - apiGroups: ["extensions", "networking.k8s.io"]
     resources: ["ingresses"]
+    verbs: ["*"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["*"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
     verbs: ["*"]
 
 ---
@@ -46,13 +53,3 @@ subjects:
   - kind: ServiceAccount
     name: jenkins-agent
     namespace: default
-
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: sonarqube-token
-  namespace: default
-type: Opaque
-data:
-  SONAR_TOKEN: ""
