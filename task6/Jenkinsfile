@@ -121,13 +121,6 @@ pipeline {
         }
 
         stage('🚀 Deploy with Helm') {
-            when {
-                anyOf {
-                    branch 'main'
-                    branch 'task_6'
-                    expression { params.FORCE_DEPLOY == true }
-                }
-            }
             steps {
                 container('helm') {
                     echo "🚀 Deploying with Helm..."
@@ -146,13 +139,6 @@ pipeline {
         }
 
         stage('✅ Health Check') {
-            when {
-                anyOf {
-                    branch 'main'
-                    branch 'task_6'
-                    expression { params.FORCE_DEPLOY == true }
-                }
-            }
             steps {
                 container('jnlp') {
                     echo "✅ Performing health check..."
@@ -224,8 +210,8 @@ pipeline {
 
 parameters {
     booleanParam(
-        name: 'FORCE_DEPLOY',
+        name: 'ENABLE_DETAILED_LOGGING',
         defaultValue: false,
-        description: 'Force deployment regardless of branch'
+        description: 'Enable detailed logging for troubleshooting'
     )
 } 
