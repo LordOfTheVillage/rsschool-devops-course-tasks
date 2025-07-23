@@ -13,9 +13,9 @@ pipeline {
         HELM_CHART_PATH = 'task6/flask-app-chart'
         
         // SonarQube settings
-        SONAR_PROJECT_KEY = 'LordOfTheVillage_rsschool-devops-course-tasks'
+        SONAR_PROJECT_KEY = 'lordofthevillage_rsschool-devops-course-tasks'
         SONAR_PROJECT_NAME = 'rsschool-devops-course-tasks'
-        SONAR_ORGANIZATION = 'LordOfTheVillage'
+        SONAR_ORGANIZATION = 'lordofthevillage'
         
         // Telegram credentials
         TELEGRAM_BOT_TOKEN = credentials('TELEGRAM_BOT_TOKEN')
