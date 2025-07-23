@@ -1,0 +1,171 @@
+{
+  "slack_webhook_configuration": {
+    "webhook_url": "${SLACK_WEBHOOK_URL}",
+    "channel": "#devops-alerts",
+    "username": "Jenkins DevOps Bot",
+    "icon_emoji": ":robot_face:"
+  },
+  "notification_templates": {
+    "success": {
+      "color": "good",
+      "title": "✅ Flask App Deployment Successful!",
+      "fields": [
+        {
+          "title": "Application",
+          "value": "${APP_NAME} v${APP_VERSION}",
+          "short": true
+        },
+        {
+          "title": "Branch",
+          "value": "${BRANCH_NAME}",
+          "short": true
+        },
+        {
+          "title": "Build",
+          "value": "<${BUILD_URL}|#${BUILD_NUMBER}>",
+          "short": true
+        },
+        {
+          "title": "Duration",
+          "value": "${BUILD_DURATION}",
+          "short": true
+        },
+        {
+          "title": "Triggered by",
+          "value": "${BUILD_USER}",
+          "short": true
+        },
+        {
+          "title": "Tests",
+          "value": "All tests passed ✅",
+          "short": true
+        },
+        {
+          "title": "Deployment",
+          "value": "Successfully deployed to Kubernetes",
+          "short": false
+        }
+      ]
+    },
+    "failure": {
+      "color": "danger",
+      "title": "❌ Flask App Deployment Failed!",
+      "fields": [
+        {
+          "title": "Application",
+          "value": "${APP_NAME} v${APP_VERSION}",
+          "short": true
+        },
+        {
+          "title": "Branch",
+          "value": "${BRANCH_NAME}",
+          "short": true
+        },
+        {
+          "title": "Build",
+          "value": "<${BUILD_URL}|#${BUILD_NUMBER}>",
+          "short": true
+        },
+        {
+          "title": "Failed Stage",
+          "value": "${FAILED_STAGE}",
+          "short": true
+        },
+        {
+          "title": "Error",
+          "value": "Check Jenkins logs for details",
+          "short": false
+        },
+        {
+          "title": "Console Output",
+          "value": "<${BUILD_URL}console|View Console Output>",
+          "short": false
+        }
+      ]
+    },
+    "unstable": {
+      "color": "warning",
+      "title": "⚠️ Flask App Build Unstable",
+      "fields": [
+        {
+          "title": "Application",
+          "value": "${APP_NAME} v${APP_VERSION}",
+          "short": true
+        },
+        {
+          "title": "Branch",
+          "value": "${BRANCH_NAME}",
+          "short": true
+        },
+        {
+          "title": "Build",
+          "value": "<${BUILD_URL}|#${BUILD_NUMBER}>",
+          "short": true
+        },
+        {
+          "title": "Issues",
+          "value": "Some tests may have failed or quality gate not met",
+          "short": false
+        },
+        {
+          "title": "Action Required",
+          "value": "Review test results and code quality reports",
+          "short": false
+        }
+      ]
+    },
+    "started": {
+      "color": "#36a64f",
+      "title": "🚀 Flask App Pipeline Started",
+      "fields": [
+        {
+          "title": "Application",
+          "value": "${APP_NAME}",
+          "short": true
+        },
+        {
+          "title": "Branch",
+          "value": "${BRANCH_NAME}",
+          "short": true
+        },
+        {
+          "title": "Build",
+          "value": "<${BUILD_URL}|#${BUILD_NUMBER}>",
+          "short": true
+        },
+        {
+          "title": "Triggered by",
+          "value": "${BUILD_USER}",
+          "short": true
+        }
+      ]
+    }
+  },
+  "setup_instructions": {
+    "slack_workspace_setup": [
+      "1. Create free Slack workspace at https://slack.com/get-started",
+      "2. Create #devops-alerts channel",
+      "3. Go to Apps > Browse Apps > Incoming Webhooks",
+      "4. Add to Slack and select #devops-alerts channel",
+      "5. Copy the Webhook URL"
+    ],
+    "jenkins_configuration_steps": [
+      "1. Install 'Slack Notification Plugin' in Jenkins",
+      "2. Go to Manage Jenkins > Configure System",
+      "3. Find 'Slack' section and configure:",
+      "   - Workspace: your-workspace.slack.com",
+      "   - Credential: create new 'Secret text' with webhook URL",
+      "   - Default channel: #devops-alerts",
+      "4. Test connection",
+      "5. Set SLACK_WEBHOOK_URL environment variable in Jenkins job"
+    ],
+    "environment_variables": {
+      "SLACK_WEBHOOK_URL": "Your webhook URL from Slack (required)",
+      "SLACK_CHANNEL": "#devops-alerts (already configured in Jenkinsfile)"
+    }
+  },
+  "usage_example": {
+    "jenkins_environment_setup": "Configure in Jenkins > Manage Jenkins > Configure System > Environment variables",
+    "pipeline_integration": "Already integrated in your Jenkinsfile - notifications will be sent automatically on build events"
+  }
+}
