@@ -51,13 +51,13 @@ spec:
               name: sonarqube-token
               key: SONAR_TOKEN
         - name: SONAR_SCANNER_OPTS
-          value: "-Xmx1024m"
+          value: "-Xms512m -Xmx1280m -XX:+UseG1GC -Dsonar.log.level=INFO -Dsonar.scanner.metadataFilePath=/tmp/sonar-scanner-metadata.properties"
       resources:
         requests:
-          memory: "512Mi"
-          cpu: "100m"
+          memory: "768Mi"
+          cpu: "200m"
         limits:
-          memory: "1Gi"
+          memory: "1.5Gi"
           cpu: "500m"
       volumeMounts:
         - name: workspace-volume
