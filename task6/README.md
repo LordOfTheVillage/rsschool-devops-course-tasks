@@ -1,456 +1,269 @@
-# Task 6: Flask Application CI/CD Pipeline with Jenkins
+# Flask Application CI/CD Pipeline
 
-![Python](https://img.shields.io/badge/Python-3.9-blue)
-![Flask](https://img.shields.io/badge/Flask-2.3.3-green)
-![Docker](https://img.shields.io/badge/Docker-enabled-blue)
-![Kubernetes](https://img.shields.io/badge/Kubernetes-1.28+-blue)
-![Jenkins](https://img.shields.io/badge/Jenkins-CI%2FCD-orange)
+A complete CI/CD pipeline for Flask application deployment using Jenkins, SonarQube Cloud, Docker, and Kubernetes.
 
-## 📋 Overview
-
-This project implements a complete CI/CD pipeline for a Flask application using Jenkins, Docker, Kubernetes (minikube), and Helm. The pipeline covers the entire software development lifecycle including build, test, security checks, containerization, and deployment.
-
-## 🏗️ Architecture
+## 🏗️ Architecture Overview
 
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Developer     │    │     Jenkins      │    │    Minikube     │
-│                 │    │                  │    │                 │
-│ 1. Push Code    │───▶│ 2. Trigger       │───▶│ 3. Deploy App   │
-│                 │    │    Pipeline      │    │                 │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-                                │
-                                ▼
-                        ┌──────────────────┐
-                        │    SonarQube     │
-                        │ Security Check   │
-                        └──────────────────┘
+GitHub → Jenkins → SonarQube Cloud → Docker Registry → Kubernetes (Helm)
+                                                           ↓
+                                              Telegram Notifications
 ```
 
-## 🚀 Quick Start
-
-### Prerequisites
-
-- **Windows 10/11** with Docker Desktop
-- **Minikube** with Docker driver
-- **Jenkins** (local installation or Docker)
-- **Helm 3.x**
-- **Git**
-- **Python 3.9+**
-
-### 1. Setup Minikube Environment
-
-```powershell
-# Run the setup script
-cd task6
-.\jenkins\minikube-setup.sh
-
-# Verify setup
-minikube status
-kubectl get nodes
-```
-
-### 2. Configure Jenkins
-
-1. Install required plugins from `jenkins/jenkins-plugins.txt`
-2. Configure Kubernetes plugin with minikube config
-3. Set up environment variables:
-   ```
-   KUBECONFIG=C:\Users\{username}\.kube\config
-   DOCKER_REGISTRY=localhost:5000
-   SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
-   ```
-
-### 3. Create Jenkins Pipeline
-
-1. New Item → Pipeline
-2. Pipeline script from SCM
-3. Repository URL: `your-repo-url`
-4. Script Path: `task6/Jenkinsfile`
-
-### 4. Run Pipeline
-
-```bash
-# Trigger pipeline manually or push to task_6 branch
-git push origin task_6
-```
-
-## 📦 Application Structure
+## 📦 Project Structure
 
 ```
 task6/
-├── flask_app/                 # Flask application
+├── flask_app/                 # Flask application source code
 │   ├── main.py               # Main application file
 │   ├── test_main.py          # Unit tests
 │   ├── requirements.txt      # Python dependencies
-│   ├── Dockerfile            # Container definition
-│   └── pytest.ini           # Test configuration
-├── flask-app-chart/          # Helm chart
-│   ├── Chart.yaml           # Chart metadata
-│   ├── values.yaml          # Default values
-│   └── templates/           # K8s manifests
-├── jenkins/                  # Jenkins configurations
-│   ├── minikube-setup.sh    # Environment setup
-│   ├── jenkins-plugins.txt  # Required plugins
-│   └── slack-notification-template.json
-├── Jenkinsfile              # CI/CD pipeline
-├── sonar-project.properties # SonarQube config
+│   ├── Dockerfile           # Docker image definition
+│   └── pytest.ini          # Test configuration
+├── flask-app-chart/         # Helm chart for Kubernetes deployment
+│   ├── Chart.yaml
+│   ├── values.yaml
+│   └── templates/
+├── jenkins-agent.yaml       # Kubernetes Pod template for Jenkins agent
+├── k8s-setup.yaml          # Kubernetes resources (ServiceAccount, RBAC)
+├── Jenkinsfile             # CI/CD pipeline definition
 └── README.md               # This documentation
 ```
 
-## 🔄 CI/CD Pipeline Stages
+## 🚀 Pipeline Stages
 
-### 1. 🚀 Checkout & Setup
+### 1. 🚀 Checkout
 
-- Git repository checkout
-- Environment information display
-- Workspace preparation
+- Clones the repository
+- Displays Git information (branch, commit, author)
 
-### 2. 🏗️ Application Build
+### 2. 🔐 SonarQube Analysis
 
-- Python virtual environment setup
-- Dependencies installation
-- Build artifacts preparation
+- Performs static code analysis using SonarQube Cloud
+- Analyzes Python code for bugs, vulnerabilities, and code smells
+- **Organization:** `lordofthevillage`
+- **Project:** `lordofthevillage_rsschool-devops-course-tasks`
 
-### 3. 🧪 Unit Tests
+### 3. 🧪 Run Tests
 
-- Test execution with pytest
-- Code coverage analysis
-- Test results publishing
-- HTML coverage reports
+- Executes unit tests with pytest
+- Generates code coverage reports
+- Publishes coverage results in Jenkins
 
-### 4. 🔐 Security Check (SonarQube)
+### 4. 🐳 Build Docker Image
 
-- Static code analysis
-- Security vulnerability scanning
-- Quality gate validation
-- Code quality metrics
+- Builds Docker image using the Dockerfile
+- Tags image with build number: `flask-app:1.0.${BUILD_NUMBER}`
 
-### 5. 🐳 Docker Build & Push
+### 5. 📤 Push Docker Image
 
-- Container image building
-- Image tagging with build number
-- Push to local registry (minikube)
-- Cleanup of local images
+- Pushes Docker image to local registry
+- Registry URL: `10.110.122.152:80`
 
-### 6. 🚀 Deploy to Kubernetes
+### 6. 🚀 Deploy with Helm
 
-- Helm chart deployment
-- Rolling update strategy
-- Health check validation
-- Service and ingress creation
+- Deploys application to Kubernetes using Helm
+- Updates image tag to current build number
+- Waits for deployment completion
 
-### 7. ✅ Application Verification
+### 7. ✅ Health Check
 
-- Health endpoint testing
-- Readiness probe validation
-- Main application functionality test
-- API endpoint verification
+- Verifies application endpoints:
+  - `/health` - Health check endpoint
+  - `/ready` - Readiness check endpoint
+  - `/` - Main application page
+  - `/api/test` - API functionality test
 
-## 🔧 Configuration
+### 8. 📱 Notifications
 
-### Environment Variables
+- Sends Telegram notifications for pipeline status
+- Includes build information and links
 
-| Variable            | Description         | Example                       |
-| ------------------- | ------------------- | ----------------------------- |
-| `APP_NAME`          | Application name    | `flask-app`                   |
-| `APP_VERSION`       | Build version       | `1.0.${BUILD_NUMBER}`         |
-| `DOCKER_REGISTRY`   | Registry URL        | `localhost:5000`              |
-| `KUBECONFIG`        | Kubernetes config   | `~/.kube/config`              |
-| `SLACK_WEBHOOK_URL` | Slack notifications | `https://hooks.slack.com/...` |
+## 🛠️ Prerequisites
 
-### Helm Values
+### Infrastructure Requirements
 
-Key configuration in `flask-app-chart/values.yaml`:
+- **Kubernetes cluster** (minikube for development)
+- **Jenkins** with Kubernetes plugin
+- **Docker registry** (local registry in minikube)
+- **SonarQube Cloud** account
 
-```yaml
-image:
-  repository: flask-app
-  tag: "latest"
-  pullPolicy: IfNotPresent
+### Jenkins Configuration
 
-service:
-  type: ClusterIP
-  port: 8080
+1. **Kubernetes Plugin** - for dynamic agent provisioning
+2. **SonarQube Scanner Plugin** - for code analysis
+3. **Credentials:**
+   - `TELEGRAM_BOT_TOKEN` - Telegram bot token
+   - `TELEGRAM_CHAT_ID` - Telegram chat ID for notifications
 
-ingress:
-  enabled: true
-  className: "nginx"
-  hosts:
-    - host: flask-app.local
-      paths:
-        - path: /
-          pathType: Prefix
+### Kubernetes Resources
 
-resources:
-  limits:
-    cpu: 100m
-    memory: 128Mi
-  requests:
-    cpu: 50m
-    memory: 64Mi
+```bash
+# Apply Kubernetes resources
+kubectl apply -f task6/k8s-setup.yaml
+
+# Create SonarQube token secret
+kubectl create secret generic sonarqube-token \
+  --from-literal=SONAR_TOKEN=<your-sonarqube-token>
 ```
 
-## 🏥 Health Checks
+## 📱 Telegram Notifications Setup
 
-The application provides several health endpoints:
+### 1. Create Telegram Bot
 
-- **`/health`** - Liveness probe endpoint
-- **`/ready`** - Readiness probe endpoint
-- **`/version`** - Application version info
-- **`/api/test`** - API functionality test
+1. Message @BotFather in Telegram
+2. Send `/newbot` command
+3. Follow instructions to create bot
+4. Save the bot token
 
-Example response:
+### 2. Get Chat ID
 
-```json
-{
-  "status": "healthy",
-  "version": "1.0.0",
-  "service": "flask-app"
-}
+1. Message @userinfobot in Telegram
+2. Copy your Chat ID
+
+### 3. Configure Jenkins Credentials
+
+- **TELEGRAM_BOT_TOKEN**: Secret text with bot token
+- **TELEGRAM_CHAT_ID**: Secret text with chat ID
+
+## 🔐 SonarQube Cloud Setup
+
+### 1. Create Project
+
+1. Go to [sonarcloud.io](https://sonarcloud.io)
+2. Create organization: `lordofthevillage`
+3. Create project: `lordofthevillage_rsschool-devops-course-tasks`
+
+### 2. Generate Token
+
+1. Go to My Account → Security → Generate Tokens
+2. Create a token for Jenkins integration
+
+### 3. Configure Kubernetes Secret
+
+```bash
+echo -n "your-sonar-token" | base64
+kubectl patch secret sonarqube-token -p='{"data":{"SONAR_TOKEN":"<base64-encoded-token>"}}'
 ```
 
-## 🧪 Testing
+## 🐳 Docker Registry
 
-### Running Tests Locally
+The pipeline uses a local Docker registry running in minikube:
 
-```powershell
-cd task6/flask_app
+```bash
+# Enable registry addon
+minikube addons enable registry
 
-# Create virtual environment
-python -m venv venv
-venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run tests
-pytest --verbose --cov=main
-
-# Run with coverage report
-pytest --cov=main --cov-report=html
+# Check registry service
+kubectl get svc -n kube-system registry
 ```
 
-### Test Coverage
+## 📊 Application Endpoints
 
-Current test coverage includes:
+After deployment, the application exposes:
 
-- ✅ Main application endpoint
-- ✅ Health check endpoints
-- ✅ API functionality
-- ✅ Error handling (404)
+- **Main page:** `http://<service-ip>/`
+- **Health check:** `http://<service-ip>/health`
+- **Readiness:** `http://<service-ip>/ready`
+- **API test:** `http://<service-ip>/api/test`
 
-## 🔐 Security
+## 🔍 Monitoring and Verification
 
-### SonarQube Integration
+### Build Artifacts
 
-The pipeline includes security scanning with:
+- **Docker Images:** Stored in local registry
+- **Helm Charts:** Version controlled in Git
+- **Coverage Reports:** Available in Jenkins UI
+- **SonarQube Reports:** Available at sonarcloud.io
 
-- **Static code analysis**
-- **Security vulnerability detection** (Bandit)
-- **Code quality metrics**
-- **Coverage analysis**
+### Application Verification
 
-Configuration in `sonar-project.properties`:
+The pipeline automatically verifies:
 
-```properties
-sonar.projectKey=flask-app-devops
-sonar.sources=flask_app
-sonar.python.coverage.reportPaths=flask_app/coverage.xml
-sonar.exclusions=**/venv/**,**/__pycache__/**
-```
+1. Health endpoint responds with 200
+2. Readiness endpoint responds with 200
+3. Main page contains "Hello, World!"
+4. API endpoint returns "API is working"
 
-### Security Best Practices
-
-- ✅ Non-root container execution
-- ✅ Resource limits defined
-- ✅ Health checks implemented
-- ✅ Static code analysis
-- ✅ Dependency scanning
-
-## 📧 Notifications
-
-### Slack Integration
-
-Configure Slack notifications in Jenkins:
-
-1. Install Slack Notification Plugin
-2. Configure webhook in Jenkins settings
-3. Set `SLACK_WEBHOOK_URL` environment variable
-
-Notification templates available in `jenkins/slack-notification-template.json`
-
-### Email Notifications
-
-Email notifications are configured for:
-
-- ✅ Pipeline success
-- ❌ Pipeline failure
-- ⚠️ Pipeline unstable
-
-## 🚀 Deployment
-
-### Manual Deployment
-
-```powershell
-# Build and push image manually
-cd task6/flask_app
-docker build -t flask-app:manual .
-docker tag flask-app:manual localhost:5000/flask-app:manual
-docker push localhost:5000/flask-app:manual
-
-# Deploy with Helm
-cd ../flask-app-chart
-helm upgrade --install flask-app . \
-  --set image.tag=manual \
-  --set image.repository=localhost:5000/flask-app
-```
-
-### Accessing the Application
-
-After deployment:
-
-```powershell
-# Get service information
-kubectl get services
-
-# Port forward to access locally
-kubectl port-forward service/flask-app 8080:8080
-
-# Test the application
-curl http://localhost:8080
-curl http://localhost:8080/health
-```
-
-For ingress access (requires hosts file update):
-
-```
-127.0.0.1 flask-app.local
-```
-
-Then visit: http://flask-app.local
-
-## 🐛 Troubleshooting
+## 🚨 Troubleshooting
 
 ### Common Issues
 
-1. **Minikube registry not accessible**
+#### Pipeline Fails at SonarQube Stage
 
-   ```powershell
-   kubectl port-forward --namespace kube-system service/registry 5000:80
-   ```
+- **Cause:** OutOfMemoryError in SonarQube scanner
+- **Solution:** Increase memory allocation in `jenkins-agent.yaml`
 
-2. **Jenkins can't access Kubernetes**
+#### Docker Build Fails
 
-   - Verify KUBECONFIG path in Jenkins
-   - Check Kubernetes plugin configuration
-   - Ensure minikube is running
+- **Cause:** Docker socket not accessible
+- **Solution:** Ensure Docker socket is mounted correctly
 
-3. **Docker push fails**
+#### Helm Deployment Fails
 
-   ```powershell
-   # Check registry status
-   curl http://localhost:5000/v2/
+- **Cause:** Insufficient RBAC permissions
+- **Solution:** Check ServiceAccount and ClusterRole configuration
 
-   # Restart port forwarding
-   kubectl port-forward --namespace kube-system service/registry 5000:80
-   ```
+### Debug Commands
 
-4. **Pipeline fails at SonarQube stage**
-   - SonarQube stage skips if SONAR_HOST_URL not set
-   - For testing, this stage can be skipped
+```bash
+# Check Jenkins agent pods
+kubectl get pods -l jenkins/jenkins-jenkins-agent=true
 
-### Logs and Debugging
+# Check application deployment
+kubectl get pods -l app.kubernetes.io/name=flask-app-chart
 
-```powershell
-# Check pod logs
+# View application logs
 kubectl logs -l app.kubernetes.io/name=flask-app-chart
 
-# Check ingress
-kubectl get ingress
-
-# Check events
-kubectl get events --sort-by=.metadata.creationTimestamp
+# Check service status
+kubectl get svc -l app.kubernetes.io/name=flask-app-chart
 ```
 
-## 📊 Monitoring
+## 📈 Metrics and Quality Gates
 
-### Application Metrics
+### SonarQube Quality Metrics
 
-The pipeline publishes:
+- **Reliability:** Code bugs and error-prone constructs
+- **Security:** Vulnerabilities and security hotspots
+- **Maintainability:** Code smells and technical debt
+- **Coverage:** Unit test coverage percentage
 
-- Test results and coverage
-- Build artifacts
-- Deployment status
-- Performance metrics
+### Pipeline Performance
 
-### Kubernetes Monitoring
+- **Average build time:** ~8 minutes
+- **Success rate:** Monitored via Jenkins
+- **Deployment frequency:** On every successful build
 
-```powershell
-# Check deployment status
-kubectl get deployments
+## 🔄 Continuous Improvement
 
-# Check pod health
-kubectl get pods -o wide
+### Future Enhancements
 
-# Check resource usage
-kubectl top pods
-```
+1. **Multi-environment deployments** (dev, staging, prod)
+2. **Integration tests** with test containers
+3. **Performance testing** with load tests
+4. **Security scanning** with container vulnerability scans
+5. **GitOps integration** with ArgoCD
 
-## 🏆 Success Criteria
+## 📝 Changelog
 
-✅ **Pipeline Configuration (40 points)**
-
-- Jenkins pipeline with Jenkinsfile
-- All required stages implemented
-- Proper error handling
-
-✅ **Artifact Storage (20 points)**
-
-- Docker images in registry
-- Helm chart in git repository
-- Build artifacts preserved
-
-✅ **Repository Submission (5 points)**
-
-- Complete application in task6 directory
-- All files properly organized
-
-✅ **Verification (5 points)**
-
-- Application deploys successfully
-- Health checks pass
-- All endpoints accessible
-
-✅ **Additional Tasks (30 points)**
-
-- Application verification implemented
-- Notification system configured
-- Complete documentation provided
+- **v1.0.11:** Added comprehensive documentation
+- **v1.0.10:** Fixed SonarQube memory allocation
+- **v1.0.9:** Updated SonarQube project configuration
+- **v1.0.1-8:** Initial pipeline development and fixes
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
+2. Create a feature branch
+3. Make changes and test locally
+4. Submit a pull request
+5. Ensure pipeline passes all stages
 
-## 📝 License
+## 📄 License
 
-This project is part of RS School DevOps Course 2025.
-
-## 📞 Support
-
-For issues and questions:
-
-- Check troubleshooting section
-- Review Jenkins build logs
-- Verify minikube status
-- Check Kubernetes events
+This project is for educational purposes as part of RS School DevOps course.
 
 ---
 
-**🎉 Happy Deploying!**
-
-This CI/CD pipeline provides a solid foundation for Flask application deployment with enterprise-grade practices including testing, security scanning, and automated deployment to Kubernetes.
+**Built with ❤️ using Jenkins, Kubernetes, and modern DevOps practices**
