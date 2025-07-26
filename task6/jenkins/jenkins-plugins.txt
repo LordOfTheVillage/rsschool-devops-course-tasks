@@ -1,0 +1,48 @@
+# Required Jenkins Plugins for Flask App CI/CD Pipeline
+# Install these plugins via Jenkins Plugin Manager or using jenkins-cli
+
+# Core Pipeline Plugins
+workflow-aggregator:latest
+pipeline-stage-view:latest
+pipeline-utility-steps:latest
+
+# Docker Integration
+docker-workflow:latest
+docker-plugin:latest
+
+# Kubernetes Integration
+kubernetes:latest
+kubernetes-cli:latest
+
+# Source Code Management
+git:latest
+github:latest
+github-branch-source:latest
+
+# Testing and Quality
+junit:latest
+coverage:latest
+htmlpublisher:latest
+cobertura:latest
+
+# SonarQube Integration
+sonar:latest
+
+# Notification Plugins
+slack:latest
+email-ext:latest
+mailer:latest
+
+# Utility Plugins
+timestamper:latest
+build-timeout:latest
+ws-cleanup:latest
+ansicolor:latest
+
+# Helm Integration
+helm:latest
+
+# Additional useful plugins
+build-user-vars-plugin:latest
+parameterized-trigger:latest
+conditional-buildstep:latest 

@@ -1,0 +1,101 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    some-label: jenkins-agent
+spec:
+  serviceAccountName: jenkins-agent
+  restartPolicy: Never
+  containers:
+    - name: jnlp
+      image: jenkins/inbound-agent:latest
+      args: ["$(JENKINS_SECRET)", "$(JENKINS_NAME)"]
+      resources:
+        requests:
+          memory: "256Mi"
+          cpu: "100m"
+        limits:
+          memory: "512Mi"
+          cpu: "500m"
+      volumeMounts:
+        - name: workspace-volume
+          mountPath: /home/jenkins/agent
+
+    - name: docker
+      image: docker:24-cli
+      command: ["cat"]
+      tty: true
+      resources:
+        requests:
+          memory: "256Mi"
+          cpu: "100m"
+        limits:
+          memory: "512Mi"
+          cpu: "500m"
+      volumeMounts:
+        - name: docker-sock
+          mountPath: /var/run/docker.sock
+        - name: workspace-volume
+          mountPath: /home/jenkins/agent
+
+    - name: sonar
+      image: sonarsource/sonar-scanner-cli:latest
+      command: ["cat"]
+      tty: true
+      env:
+        - name: SONAR_HOST_URL
+          value: "https://sonarcloud.io"
+        - name: SONAR_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: sonarqube-token
+              key: SONAR_TOKEN
+        - name: SONAR_SCANNER_OPTS
+          value: "-Xms512m -Xmx1280m -XX:+UseG1GC -Dsonar.log.level=INFO -Dsonar.scanner.metadataFilePath=/tmp/sonar-scanner-metadata.properties"
+      resources:
+        requests:
+          memory: "768Mi"
+          cpu: "200m"
+        limits:
+          memory: "1.5Gi"
+          cpu: "500m"
+      volumeMounts:
+        - name: workspace-volume
+          mountPath: /home/jenkins/agent
+
+    - name: python
+      image: python:3.9-slim
+      command: ["cat"]
+      tty: true
+      resources:
+        requests:
+          memory: "256Mi"
+          cpu: "100m"
+        limits:
+          memory: "512Mi"
+          cpu: "500m"
+      volumeMounts:
+        - name: workspace-volume
+          mountPath: /home/jenkins/agent
+
+    - name: helm
+      image: alpine/helm:latest
+      command: ["cat"]
+      tty: true
+      resources:
+        requests:
+          memory: "128Mi"
+          cpu: "50m"
+        limits:
+          memory: "256Mi"
+          cpu: "200m"
+      volumeMounts:
+        - name: workspace-volume
+          mountPath: /home/jenkins/agent
+
+  volumes:
+    - name: docker-sock
+      hostPath:
+        path: /var/run/docker.sock
+    - name: workspace-volume
+      emptyDir: {}
